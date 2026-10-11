@@ -37,7 +37,14 @@ export function receiveEnglishReading({ sourceText, sourceRevision = null, engli
 
   const diagnostics = [];
   const sentences = [];
+  const uncoveredSpans = [];
   let searchAfter = 0;
+  const recordUncovered = (from, to) => {
+    if (from >= to || !/\S/u.test(sourceText.slice(from, to))) return;
+    uncoveredSpans.push([from, to]);
+    diagnostics.push(REFUSAL('UNPARSED_SOURCE_CONTENT',
+      'Non-whitespace source content at UTF-16 [' + from + ',' + to + ') is absent from upstream sentence spans'));
+  };
   for (let i = 0; i < reading.sentences.length; i++) {
     const sentence = reading.sentences[i];
     if (!nonempty(sentence?.text) || !Array.isArray(sentence.words) || !Array.isArray(sentence.arcs)
@@ -47,9 +54,10 @@ export function receiveEnglishReading({ sourceText, sourceRevision = null, engli
     const start = sourceText.indexOf(sentence.text, searchAfter);
     if (start < 0) {
       diagnostics.push(REFUSAL('SOURCE_SPAN_NOT_FOUND', `sentence ${i} is not an exact later source substring`));
-      sentences.push({ sourceSpan: null, words: [], grammarRelations: [], roleCandidates: [], cohomology: sentence.cohomology ?? null });
+      sentences.push({ sourceSpan: null, words: [], grammarRelations: [], roleCandidates: [], roleBindings: [], cohomology: sentence.cohomology ?? null });
       continue;
     }
+    recordUncovered(searchAfter, start);
     searchAfter = start + sentence.text.length;
     const words = [];
     let localCursor = 0;
@@ -87,15 +95,62 @@ export function receiveEnglishReading({ sourceText, sourceRevision = null, engli
         parserStatus: arc.status ?? null, evidenceForWorldClaim: false });
     }
     if (grammarRelations.length === 0) diagnostics.push(REFUSAL('NO_GRAMMATICAL_RELATIONS', `sentence ${i} has no licensed dependency relations`));
-    // Preserve source grammar's role candidates; never convert them into truth witnesses.
+    // Preserve upstream role frames, but only separately assert token occurrence
+    // bindings when each role string names exactly one source word in this sentence.
+    const roleBindings = sentence.roles.map((frame, frameIndex) => {
+      const bindings = {};
+      let unresolved = false;
+      if (!frame || typeof frame !== 'object' || Array.isArray(frame)) {
+        diagnostics.push(REFUSAL('MALFORMED_ROLE_FRAME',
+          'role frame ' + i + ':' + frameIndex + ' is not an object'));
+        return { frameIndex, status: 'unresolved', bindings };
+      }
+      const supported = ['verb', 'agent', 'patient', 'instrument', 'recipient', 'location'];
+      if (!nonempty(frame.verb)) {
+        diagnostics.push(REFUSAL('ROLE_PREDICATE_MISSING',
+          'role frame ' + i + ':' + frameIndex + ' lacks a source verb'));
+        unresolved = true;
+      }
+      for (const [key, value] of Object.entries(frame)) {
+        if (!supported.includes(key) && value !== null) {
+          diagnostics.push(REFUSAL('UNSUPPORTED_ROLE_FIELD',
+            'role ' + i + ':' + frameIndex + ':' + key + ' is not in the upstream role contract'));
+          unresolved = true;
+        }
+      }
+      for (const key of supported) {
+        if (!Object.hasOwn(frame, key) || frame[key] === null) continue;
+        if (!nonempty(frame[key])) {
+          diagnostics.push(REFUSAL('UNSUPPORTED_ROLE_VALUE',
+            'role ' + i + ':' + frameIndex + ':' + key + ' is not a nonempty token name'));
+          bindings[key] = null;
+          unresolved = true;
+          continue;
+        }
+        const matches = byText.get(frame[key]) ?? [];
+        const unique = matches.length === 1 && matches[0].sourceSpan !== null;
+        if (!unique) {
+          diagnostics.push(REFUSAL('UNRESOLVED_ROLE_REFERENT',
+            'role ' + i + ':' + frameIndex + ':' + key + ' cannot identify one token occurrence'));
+        }
+        bindings[key] = unique
+          ? { tokenId: matches[0].tokenId, sourceSpan: [...matches[0].sourceSpan] }
+          : null;
+        if (!unique) unresolved = true;
+      }
+      return { frameIndex, status: unresolved ? 'unresolved' : 'source-bound', bindings };
+    });
     sentences.push({ sourceSpan: [start, start + sentence.text.length], words, grammarRelations,
-      roleCandidates: structuredClone(sentence.roles), cohomology: structuredClone(sentence.cohomology ?? null) });
+      roleCandidates: structuredClone(sentence.roles), roleBindings,
+      cohomology: structuredClone(sentence.cohomology ?? null) });
   }
+  recordUncovered(searchAfter, sourceText.length);
   if (sentences.length === 0) diagnostics.push(REFUSAL('NO_SENTENCES', 'English parser supplied no sentence readings'));
   return {
     kind: 'ptgae.english-reading-gate.v0',
     status: diagnostics.length ? 'abstained' : 'candidate',
-    source: { sha256: hashSource(sourceText), utf16Length: sourceText.length, sourceRevision, coordinates: 'utf16-half-open' },
+    source: { sha256: hashSource(sourceText), utf16Length: sourceText.length, sourceRevision, coordinates: 'utf16-half-open',
+      coverage: { complete: uncoveredSpans.length === 0 && sentences.every(sentence => sentence.sourceSpan !== null), uncoveredSpans } },
     upstream: structuredClone(englishBundle),
     sentences, diagnostics,
     interpretationAuthority: 'candidate-only',

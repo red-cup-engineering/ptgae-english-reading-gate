@@ -69,7 +69,10 @@ test('duplicate surface tokens make text-addressed grammar arcs ambiguous', () =
 test('UTF-16 offsets remain correct after astral character', () => {
   const source = '😀 ' + text;
   const result = accept({ sourceText: source });
-  assert.equal(result.status, 'candidate');
+  // The parser omitted a non-whitespace prefix; offsets remain valid, but a
+  // whole-document candidate must abstain from claiming complete coverage.
+  assert.equal(result.status, 'abstained');
+  assert.deepEqual(result.source.coverage.uncoveredSpans, [[0, 3]]);
   assert.deepEqual(result.sentences[0].sourceSpan, [3, source.length]);
   assert.deepEqual(result.sentences[0].words[0].sourceSpan, [3, 6]);
 });
