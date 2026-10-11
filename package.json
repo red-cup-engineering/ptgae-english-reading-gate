@@ -4,7 +4,14 @@
   "type": "module",
   "private": true,
   "description": "Receive pinned Lenticule English candidate parses without promoting syntax to evidence or authority.",
-  "exports": "./src/admit-english-reading.mjs",
-  "scripts": {"test": "node --test test/*.test.mjs"},
-  "peerDependencies": {"@lenticule-science/english-language-algebra": "*"}
+  "exports": {
+    ".": "./src/admit-english-reading.mjs",
+    "./consume-english-algebra": "./src/consume-english-algebra.mjs"
+  },
+  "scripts": {
+    "test": "node --test test/*.test.mjs"
+  },
+  "peerDependencies": {
+    "@lenticule-science/english-language-algebra": "*"
+  }
 }

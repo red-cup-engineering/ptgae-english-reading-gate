@@ -35,7 +35,7 @@ The gate always returns empty signCellsAdmitted and executableEffects. Its inter
 
 From this package directory: node --test test/*.test.mjs
 
-Nine native Node tests cover a successful English-shaped past-tense parse, deterministic receipts, source text mismatch, missing pin, wrong language, bare-present-verb failure, repeated-token ambiguity, UTF-16 astral positions, malformed inputs. They were run locally under **Node v22.16.0** with nine passes and no failures. Those results exercise this package's fixtures only, **not an installed Lenticule English parser**. The upstream English package currently requests Node >=22.18; native upstream integration needs a compatible environment.
+Twelve native Node tests cover a successful English-shaped past-tense parse, deterministic receipts, source text mismatch, missing pin, wrong language, bare-present-verb failure, repeated-token ambiguity, UTF-16 astral positions, malformed inputs. They were run locally under **Node v22.16.0** with twelve passes and no failures. This count includes three tests of the injected English tagText consumer, using fixtures rather than a resolved package. Those results exercise this package's fixtures only, **not an installed Lenticule English parser**. The upstream English package currently requests Node >=22.18; native upstream integration needs a compatible environment.
 
 ## Next typed stages
 
@@ -46,3 +46,9 @@ Nine native Node tests cover a successful English-shaped past-tense parse, deter
 5. **Constrain English grammar** with a versioned supported fragment, typed conditions and refusal/repair. Test roundtrip properties on that **bounded** fragment, and run human-reader task evaluation independently.
 
 Sources: [English Science #59](https://github.com/lenticule-science/science-services-section/issues/59), [PlainEng theory #61](https://github.com/lenticule-science/science-services-section/issues/61), [PTGAE adapter #6](https://github.com/red-cup-engineering/ptgae-engineering-services-section/issues/6), [grammar compiler #7](https://github.com/red-cup-engineering/ptgae-engineering-services-section/issues/7), [sheaf semantics #8](https://github.com/red-cup-engineering/ptgae-engineering-services-section/issues/8).
+
+## Direct English-package consumer interface
+
+[consume-english-algebra.mjs](src/consume-english-algebra.mjs) provides a small adapter that calls an injected, synchronous English algebra `tagText(sourceText)` function and passes its result through this gate. For example, once the owner resolves and independently verifies the source package and version, a consuming service may import the selected package's public `./tag` subpath and supply its `tagText` function. This adapter **does not** resolve or authenticate packages, inject an English grammar, or certify a source hash. Its callback is caller-owned and must be trusted/pure; the adapter cannot prevent effects that an untrusted callback would perform on its own.
+
+The direct-adapter tests verify invocation, response anchoring and refusal of an absent/asynchronous provider or source mismatch. The resulting gate still returns *candidate* relations, never witnessed SignCell claims or permission to act.
