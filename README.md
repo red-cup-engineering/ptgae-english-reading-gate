@@ -52,3 +52,9 @@ Sources: [English Science #59](https://github.com/lenticule-science/science-serv
 [consume-english-algebra.mjs](src/consume-english-algebra.mjs) provides a small adapter that calls an injected, synchronous English algebra `tagText(sourceText)` function and passes its result through this gate. For example, once the owner resolves and independently verifies the source package and version, a consuming service may import the selected package's public `./tag` subpath and supply its `tagText` function. This adapter **does not** resolve or authenticate packages, inject an English grammar, or certify a source hash. Its callback is caller-owned and must be trusted/pure; the adapter cannot prevent effects that an untrusted callback would perform on its own.
 
 The direct-adapter tests verify invocation, response anchoring and refusal of an absent/asynchronous provider or source mismatch. The resulting gate still returns *candidate* relations, never witnessed SignCell claims or permission to act.
+
+## Executable PTGAE direct-SVO profile
+
+This package now exports `./direct-svo` with `compilePtgaeDirectSvo({sourceText, sourceRevision, englishBundle, tagText})` and `realizePtgaeDirectSvo(compilation)`. The compiler consumes this gate's returned source-bound tokens, role bindings, and grammatical arcs, then admits only the bounded canonical SVO pattern specified in [the PTGAE fragment contract](../../docs/ptgae-direct-svo-fragment-v0.md). It requires settled grammar observations, complete source coverage, unique token occurrences, and matching `nsubj`/`dobj`/`det` roles. It never invents semantics, world evidence, or authority. The realizer reconstructs only the exact admitted surface.
+
+The focused local regression suite includes 35 synthetic upstream-shaped cases; these do not authenticate or execute the upstream package. A grammar/role result labeled `admitted` is syntactic and source-scoped, not a factual or logical proof.

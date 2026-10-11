@@ -6,7 +6,8 @@
   "description": "Receive pinned Lenticule English candidate parses without promoting syntax to evidence or authority.",
   "exports": {
     ".": "./src/admit-english-reading.mjs",
-    "./consume-english-algebra": "./src/consume-english-algebra.mjs"
+    "./consume-english-algebra": "./src/consume-english-algebra.mjs",
+    "./direct-svo": "./src/compile-direct-svo.mjs"
   },
   "scripts": {
     "test": "node --test test/*.test.mjs"
