@@ -14,5 +14,9 @@
   },
   "peerDependencies": {
     "@lenticule-science/english-language-algebra": "*"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/red-cup-engineering/ptgae-english-reading-gate.git"
   }
 }
