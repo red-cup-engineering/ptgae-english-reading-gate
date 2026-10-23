@@ -4,6 +4,13 @@ const PACKAGE = '@lenticule-science/english-language-algebra';
 const REFUSAL = (code, message) => Object.freeze({ code, message });
 const nonempty = (s) => typeof s === 'string' && s.trim().length > 0;
 const hashSource = (s) => createHash('sha256').update(s, 'utf8').digest('hex');
+const intactOffset = (source, offset) => offset === 0 || offset === source.length
+  || !(source.charCodeAt(offset - 1) >= 0xD800 && source.charCodeAt(offset - 1) <= 0xDBFF
+    && source.charCodeAt(offset) >= 0xDC00 && source.charCodeAt(offset) <= 0xDFFF);
+const exactSpan = (source, span, text, from, to) => Array.isArray(span) && span.length === 2
+  && span.every(Number.isSafeInteger) && span[0] >= from && span[1] <= to && span[0] < span[1]
+  && intactOffset(source, span[0]) && intactOffset(source, span[1])
+  && source.slice(span[0], span[1]) === text;
 const letterOrNumber = (char) => char !== undefined && /[\p{L}\p{M}\p{N}]/u.test(char);
 
 /** Find an intact source token, rather than treating a substring of another word as a token. */
@@ -51,7 +58,15 @@ export function receiveEnglishReading({ sourceText, sourceRevision = null, engli
       || !Array.isArray(sentence.roles)) {
       throw new TypeError(`sentence ${i} is not a supported tagText() sentence`);
     }
-    const start = sourceText.indexOf(sentence.text, searchAfter);
+    const native = ['sourceBinding','sourceSpan','wordSourceSpans'].some(key => Object.hasOwn(sentence, key));
+    if (native && (sentence.sourceBinding !== 'native-exact'
+      || !exactSpan(sourceText, sentence.sourceSpan, sentence.text, searchAfter, sourceText.length)
+      || !Array.isArray(sentence.wordSourceSpans) || sentence.wordSourceSpans.length !== sentence.words.length)) {
+      diagnostics.push(REFUSAL('NATIVE_SOURCE_BINDING_INVALID', 'sentence ' + i + ' lacks a valid native source binding'));
+      sentences.push({ sourceSpan: null, sourceBinding: 'withheld', words: [], grammarRelations: [], roleCandidates: [], roleBindings: [], cohomology: sentence.cohomology ?? null });
+      continue;
+    }
+    const start = native ? sentence.sourceSpan[0] : sourceText.indexOf(sentence.text, searchAfter);
     if (start < 0) {
       diagnostics.push(REFUSAL('SOURCE_SPAN_NOT_FOUND', `sentence ${i} is not an exact later source substring`));
       sentences.push({ sourceSpan: null, words: [], grammarRelations: [], roleCandidates: [], roleBindings: [], cohomology: sentence.cohomology ?? null });
@@ -64,9 +79,12 @@ export function receiveEnglishReading({ sourceText, sourceRevision = null, engli
     for (let j = 0; j < sentence.words.length; j++) {
       const word = sentence.words[j];
       if (!nonempty(word?.text)) throw new TypeError(`word ${i}:${j} is not an English word result`);
-      const localAt = findWord(sentence.text, word.text, localCursor);
+      const nativeSpan = native ? sentence.wordSourceSpans[j] : null;
+      const localAt = native
+        ? (exactSpan(sourceText, nativeSpan, word.text, start + localCursor, start + sentence.text.length) ? nativeSpan[0] - start : -1)
+        : findWord(sentence.text, word.text, localCursor);
       if (localAt < 0) {
-        diagnostics.push(REFUSAL('WORD_SPAN_NOT_FOUND', `word ${i}:${j} lacks an exact source token`));
+        diagnostics.push(REFUSAL(native ? 'NATIVE_WORD_SPAN_INVALID' : 'WORD_SPAN_NOT_FOUND', `word ${i}:${j} lacks an exact source token`));
         words.push({ tokenId: `${i}:${j}`, text: word.text, sourceSpan: null, tags: word.tags ?? [] });
       } else {
         localCursor = localAt + word.text.length;
@@ -92,7 +110,7 @@ export function receiveEnglishReading({ sourceText, sourceRevision = null, engli
       grammarRelations.push({ kind: 'english.grammatical-candidate', rel: arc.rel,
         head: unique ? heads[0].tokenId : null,
         dependent: unique ? dependents[0].tokenId : null,
-        parserStatus: arc.status ?? null, evidenceForWorldClaim: false });
+        parserStatus: arc.status ?? null, parserValue: arc.value ?? null, evidenceForWorldClaim: false });
     }
     if (grammarRelations.length === 0) diagnostics.push(REFUSAL('NO_GRAMMATICAL_RELATIONS', `sentence ${i} has no licensed dependency relations`));
     // Preserve upstream role frames, but only separately assert token occurrence
@@ -140,7 +158,7 @@ export function receiveEnglishReading({ sourceText, sourceRevision = null, engli
       }
       return { frameIndex, status: unresolved ? 'unresolved' : 'source-bound', bindings };
     });
-    sentences.push({ sourceSpan: [start, start + sentence.text.length], words, grammarRelations,
+    sentences.push({ sourceSpan: [start, start + sentence.text.length], sourceBinding: native ? 'native-exact' : 'legacy-source-match', words, grammarRelations,
       roleCandidates: structuredClone(sentence.roles), roleBindings,
       cohomology: structuredClone(sentence.cohomology ?? null) });
   }

@@ -9,10 +9,10 @@ function shaped(source, alterations={}) {
   const n=words.length;
   const shapes=words.map((text,i)=>({text,tags: [i===0&&n===5?'det':i===n-2?'det':i===n-3?'verb':'noun']}));
   const verb=words[n-3], subject=words[n===5?1:0], object=words[n-1];
-  const arcs=[{rel:'nsubj',head:verb,dependent:subject,status:'settled'},
-              {rel:'dobj',head:verb,dependent:object,status:'settled'},
-              {rel:'det',head:object,dependent:words[n-2],status:'settled'},
-              ...(n===5?[{rel:'det',head:subject,dependent:words[0],status:'settled'}]:[])];
+  const arcs=[{rel:'nsubj',head:verb,dependent:subject,status:'decided',value:'potential'},
+              {rel:'dobj',head:verb,dependent:object,status:'decided',value:'potential'},
+              {rel:'det',head:object,dependent:words[n-2],status:'decided',value:'potential'},
+              ...(n===5?[{rel:'det',head:subject,dependent:words[0],status:'decided',value:'potential'}]:[])];
   const role={verb,agent:subject,patient:object};
   return {meta:{name:'English',code:'en'},sentences:[{text:source,words:alterations.words??shapes,
     arcs:alterations.arcs??arcs,roles:alterations.roles??[role]}]};
@@ -82,7 +82,7 @@ test('rejects missing nsubj or extra relations',()=>{
   for(const relation of ['nsubj','root']) {
     const reading=shaped(base);
     reading.sentences[0].arcs=relation==='nsubj'?reading.sentences[0].arcs.filter(a=>a.rel!=='nsubj'):
-      [...reading.sentences[0].arcs,{rel:'root',head:'graded',dependent:'exam',status:'settled'}];
+      [...reading.sentences[0].arcs,{rel:'root',head:'graded',dependent:'exam',status:'decided',value:'potential'}];
     const r=compile(base,reading);
     assert.equal(r.status,'unsupported');
     assert.equal(r.diagnostics[0].code,'PROFILE_ARCS');
@@ -151,4 +151,16 @@ test('input bundles with malformed source pins refuse without appearing admitted
 });
 test('a caller must provide the English parser, not a PTGAE-native tokenizer',()=>{
   assert.throws(()=>compilePtgaeDirectSvo({sourceText:base,englishBundle}),/caller-supplied function/);
+});
+
+test('FOUR grammar evidence must be positive only; decided alone cannot admit negative evidence',()=>{
+ for(const value of ['active','stable','absurd',null,'unknown-value']) {
+  const reading=shaped(base); reading.sentences[0].arcs[0].value=value;
+  const result=compile(base,reading);
+  assert.equal(result.status,'unsupported');
+  assert.equal(result.diagnostics[0].code,'PROFILE_ARCS');
+  assert.deepEqual(result.predications,[]);
+ }
+ const old=shaped(base);old.sentences[0].arcs[0].status='settled';
+ assert.equal(compile(base,old).status,'unsupported');
 });
