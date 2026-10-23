@@ -1,6 +1,6 @@
 {
   "name": "@red-cup-engineering/ptgae-english-reading-gate",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "type": "module",
   "private": true,
   "description": "Receive pinned Lenticule English candidate parses without promoting syntax to evidence or authority.",
@@ -10,10 +10,12 @@
     "./direct-svo": "./src/compile-direct-svo.mjs"
   },
   "scripts": {
-    "test": "node --test test/*.test.mjs"
+    "test": "node --test test/*.test.mjs",
+    "test:isolated": "node --test test/admit-english-reading.test.mjs test/consume-english-algebra.test.mjs test/coverage.test.mjs test/compile-direct-svo.test.mjs",
+    "test:native-english": "node --test test/native-english.test.mjs"
   },
   "peerDependencies": {
-    "@lenticule-science/english-language-algebra": "*"
+    "@lenticule-science/english-language-algebra": "0.1.11"
   },
   "repository": {
     "type": "git",
@@ -23,5 +25,8 @@
   "funding": {
     "type": "individual",
     "url": "https://github.com/561-group/.github/blob/main/TIPS.md"
+  },
+  "dependencies": {
+    "@red-cup-engineering/computer-data-engineering-services-section": "0.2.0"
   }
 }

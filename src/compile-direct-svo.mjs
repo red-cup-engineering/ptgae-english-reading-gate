@@ -1,5 +1,6 @@
 import { createHash } from 'node:crypto';
 import { consumeEnglishAlgebra } from './consume-english-algebra.mjs';
+import { isReading, isTruthTop } from '@red-cup-engineering/computer-data-engineering-services-section/four';
 
 export const DIRECT_SVO_PROFILE = 'ptgae.direct-svo.v0.1';
 const hash = text => createHash('sha256').update(text, 'utf8').digest('hex');
@@ -102,8 +103,9 @@ export function compilePtgaeDirectSvo({ sourceText, sourceRevision = null, engli
   ];
   if (s.grammarRelations.length !== expected.length || expected.some(([rel,head,dependent]) =>
     s.grammarRelations.filter(a => a.rel === rel && a.head === head.tokenId
-      && a.dependent === dependent.tokenId && a.parserStatus === 'settled').length !== 1)) {
-    return fail('unsupported','PROFILE_ARCS','Settled English nsubj/dobj/det arcs must match exactly, without extra relations');
+      && a.dependent === dependent.tokenId && a.parserStatus === 'decided'
+      && isReading(a.parserValue, 'knowledge') && isTruthTop(a.parserValue)).length !== 1)) {
+    return fail('unsupported','PROFILE_ARCS','Decided, positive-only English nsubj/dobj/det observations must match exactly, without extra relations');
   }
   const node = w => ({ tokenId: w.tokenId, text: w.text, sourceSpan: [...w.sourceSpan] });
   const predication = {
