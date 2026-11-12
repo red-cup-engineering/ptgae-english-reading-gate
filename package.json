@@ -27,6 +27,7 @@
     "url": "https://github.com/561-group/.github/blob/main/TIPS.md"
   },
   "dependencies": {
+    "@red-cup-engineering/metrologic": "^0.22.1",
     "@red-cup-engineering/computer-data-engineering-services-section": "0.2.0"
   }
 }

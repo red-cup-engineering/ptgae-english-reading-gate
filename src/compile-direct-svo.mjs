@@ -1,6 +1,6 @@
 import { createHash } from 'node:crypto';
 import { consumeEnglishAlgebra } from './consume-english-algebra.mjs';
-import { isReading, isTruthTop } from '@red-cup-engineering/computer-data-engineering-services-section/four';
+import { isReading, isTruthTop } from '@red-cup-engineering/metrologic/four';
 
 export const DIRECT_SVO_PROFILE = 'ptgae.direct-svo.v0.1';
 const hash = text => createHash('sha256').update(text, 'utf8').digest('hex');
