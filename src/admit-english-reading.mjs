@@ -1,9 +1,10 @@
+import { sha256Hex } from "@red-cup-engineering/semiotic-content-address-system";
 import { createHash } from 'node:crypto';
 
 const PACKAGE = '@lenticule-science/english-language-algebra';
 const REFUSAL = (code, message) => Object.freeze({ code, message });
 const nonempty = (s) => typeof s === 'string' && s.trim().length > 0;
-const hashSource = (s) => createHash('sha256').update(s, 'utf8').digest('hex');
+
 const intactOffset = (source, offset) => offset === 0 || offset === source.length
   || !(source.charCodeAt(offset - 1) >= 0xD800 && source.charCodeAt(offset - 1) <= 0xDBFF
     && source.charCodeAt(offset) >= 0xDC00 && source.charCodeAt(offset) <= 0xDFFF);
@@ -167,7 +168,7 @@ export function receiveEnglishReading({ sourceText, sourceRevision = null, engli
   return {
     kind: 'ptgae.english-reading-gate.v0',
     status: diagnostics.length ? 'abstained' : 'candidate',
-    source: { sha256: hashSource(sourceText), utf16Length: sourceText.length, sourceRevision, coordinates: 'utf16-half-open',
+    source: { sha256: sha256Hex(sourceText), utf16Length: sourceText.length, sourceRevision, coordinates: 'utf16-half-open',
       coverage: { complete: uncoveredSpans.length === 0 && sentences.every(sentence => sentence.sourceSpan !== null), uncoveredSpans } },
     upstream: structuredClone(englishBundle),
     sentences, diagnostics,

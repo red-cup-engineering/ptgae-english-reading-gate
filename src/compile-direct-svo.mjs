@@ -1,9 +1,10 @@
+import { sha256Hex } from "@red-cup-engineering/semiotic-content-address-system";
 import { createHash } from 'node:crypto';
 import { consumeEnglishAlgebra } from './consume-english-algebra.mjs';
 import { isReading, isTruthTop } from '@red-cup-engineering/metrologic/four';
 
 export const DIRECT_SVO_PROFILE = 'ptgae.direct-svo.v0.1';
-const hash = text => createHash('sha256').update(text, 'utf8').digest('hex');
+
 const lexical = /^[\p{L}\p{M}]+(?:['’\-][\p{L}\p{M}]+)*$/u;
 const rejection = (code, message) => ({ code, message });
 
@@ -133,7 +134,7 @@ export function realizePtgaeDirectSvo(compilation) {
     throw new TypeError('PTGAE surface tokens are invalid');
   }
   const text = words.map(w => w.text).join(' ') + '.';
-  if (hash(text) !== compilation.source?.sha256 || text.length !== compilation.source?.utf16Length) {
+  if (sha256Hex(text) !== compilation.source?.sha256 || text.length !== compilation.source?.utf16Length) {
     throw new RangeError('PTGAE realization does not preserve the certified source bytes');
   }
   let offset=0;
