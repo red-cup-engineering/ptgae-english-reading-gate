@@ -1,7 +1,7 @@
 import { createHash } from 'node:crypto';
 
 const PACKAGE = '@lenticule-science/english-language-algebra';
-const REJECTION = (code, message) => Object.freeze({ code, message });
+const REFUSAL = (code, message) => Object.freeze({ code, message });
 const nonempty = (s) => typeof s === 'string' && s.trim().length > 0;
 const hashSource = (s) => createHash('sha256').update(s, 'utf8').digest('hex');
 const intactOffset = (source, offset) => offset === 0 || offset === source.length
@@ -49,7 +49,7 @@ export function receiveEnglishReading({ sourceText, sourceRevision = null, engli
   const recordUncovered = (from, to) => {
     if (from >= to || !/\S/u.test(sourceText.slice(from, to))) return;
     uncoveredSpans.push([from, to]);
-    diagnostics.push(REJECTION('UNPARSED_SOURCE_CONTENT',
+    diagnostics.push(REFUSAL('UNPARSED_SOURCE_CONTENT',
       'Non-whitespace source content at UTF-16 [' + from + ',' + to + ') is absent from upstream sentence spans'));
   };
   for (let i = 0; i < reading.sentences.length; i++) {
@@ -62,13 +62,13 @@ export function receiveEnglishReading({ sourceText, sourceRevision = null, engli
     if (native && (sentence.sourceBinding !== 'native-exact'
       || !exactSpan(sourceText, sentence.sourceSpan, sentence.text, searchAfter, sourceText.length)
       || !Array.isArray(sentence.wordSourceSpans) || sentence.wordSourceSpans.length !== sentence.words.length)) {
-      diagnostics.push(REJECTION('NATIVE_SOURCE_BINDING_INVALID', 'sentence ' + i + ' lacks a valid native source binding'));
+      diagnostics.push(REFUSAL('NATIVE_SOURCE_BINDING_INVALID', 'sentence ' + i + ' lacks a valid native source binding'));
       sentences.push({ sourceSpan: null, sourceBinding: 'withheld', words: [], grammarRelations: [], roleCandidates: [], roleBindings: [], cohomology: sentence.cohomology ?? null });
       continue;
     }
     const start = native ? sentence.sourceSpan[0] : sourceText.indexOf(sentence.text, searchAfter);
     if (start < 0) {
-      diagnostics.push(REJECTION('SOURCE_SPAN_NOT_FOUND', `sentence ${i} is not an exact later source substring`));
+      diagnostics.push(REFUSAL('SOURCE_SPAN_NOT_FOUND', `sentence ${i} is not an exact later source substring`));
       sentences.push({ sourceSpan: null, words: [], grammarRelations: [], roleCandidates: [], roleBindings: [], cohomology: sentence.cohomology ?? null });
       continue;
     }
@@ -84,7 +84,7 @@ export function receiveEnglishReading({ sourceText, sourceRevision = null, engli
         ? (exactSpan(sourceText, nativeSpan, word.text, start + localCursor, start + sentence.text.length) ? nativeSpan[0] - start : -1)
         : findWord(sentence.text, word.text, localCursor);
       if (localAt < 0) {
-        diagnostics.push(REJECTION(native ? 'NATIVE_WORD_SPAN_INVALID' : 'WORD_SPAN_NOT_FOUND', `word ${i}:${j} lacks an exact source token`));
+        diagnostics.push(REFUSAL(native ? 'NATIVE_WORD_SPAN_INVALID' : 'WORD_SPAN_NOT_FOUND', `word ${i}:${j} lacks an exact source token`));
         words.push({ tokenId: `${i}:${j}`, text: word.text, sourceSpan: null, tags: word.tags ?? [] });
       } else {
         localCursor = localAt + word.text.length;
@@ -97,7 +97,7 @@ export function receiveEnglishReading({ sourceText, sourceRevision = null, engli
     for (let j = 0; j < sentence.arcs.length; j++) {
       const arc = sentence.arcs[j];
       if (!nonempty(arc?.rel) || !nonempty(arc?.head) || !nonempty(arc?.dependent)) {
-        diagnostics.push(REJECTION('MALFORMED_RELATION', `arc ${i}:${j} lacks relation/head/dependent`));
+        diagnostics.push(REFUSAL('MALFORMED_RELATION', `arc ${i}:${j} lacks relation/head/dependent`));
         continue;
       }
       const heads = byText.get(arc.head) ?? [];
@@ -105,33 +105,33 @@ export function receiveEnglishReading({ sourceText, sourceRevision = null, engli
       const unique = heads.length === 1 && dependents.length === 1
         && heads[0].sourceSpan !== null && dependents[0].sourceSpan !== null;
       if (!unique) {
-        diagnostics.push(REJECTION('AMBIGUOUS_RELATION_REFERENT', `arc ${i}:${j} cannot uniquely identify source token instances`));
+        diagnostics.push(REFUSAL('AMBIGUOUS_RELATION_REFERENT', `arc ${i}:${j} cannot uniquely identify source token instances`));
       }
       grammarRelations.push({ kind: 'english.grammatical-candidate', rel: arc.rel,
         head: unique ? heads[0].tokenId : null,
         dependent: unique ? dependents[0].tokenId : null,
         parserStatus: arc.status ?? null, parserValue: arc.value ?? null, evidenceForWorldClaim: false });
     }
-    if (grammarRelations.length === 0) diagnostics.push(REJECTION('NO_GRAMMATICAL_RELATIONS', `sentence ${i} has no licensed dependency relations`));
+    if (grammarRelations.length === 0) diagnostics.push(REFUSAL('NO_GRAMMATICAL_RELATIONS', `sentence ${i} has no licensed dependency relations`));
     // Preserve upstream role frames, but only separately assert token occurrence
     // bindings when each role string names exactly one source word in this sentence.
     const roleBindings = sentence.roles.map((frame, frameIndex) => {
       const bindings = {};
       let unresolved = false;
       if (!frame || typeof frame !== 'object' || Array.isArray(frame)) {
-        diagnostics.push(REJECTION('MALFORMED_ROLE_FRAME',
+        diagnostics.push(REFUSAL('MALFORMED_ROLE_FRAME',
           'role frame ' + i + ':' + frameIndex + ' is not an object'));
         return { frameIndex, status: 'unresolved', bindings };
       }
       const supported = ['verb', 'agent', 'patient', 'instrument', 'recipient', 'location'];
       if (!nonempty(frame.verb)) {
-        diagnostics.push(REJECTION('ROLE_PREDICATE_MISSING',
+        diagnostics.push(REFUSAL('ROLE_PREDICATE_MISSING',
           'role frame ' + i + ':' + frameIndex + ' lacks a source verb'));
         unresolved = true;
       }
       for (const [key, value] of Object.entries(frame)) {
         if (!supported.includes(key) && value !== null) {
-          diagnostics.push(REJECTION('UNSUPPORTED_ROLE_FIELD',
+          diagnostics.push(REFUSAL('UNSUPPORTED_ROLE_FIELD',
             'role ' + i + ':' + frameIndex + ':' + key + ' is not in the upstream role contract'));
           unresolved = true;
         }
@@ -139,7 +139,7 @@ export function receiveEnglishReading({ sourceText, sourceRevision = null, engli
       for (const key of supported) {
         if (!Object.hasOwn(frame, key) || frame[key] === null) continue;
         if (!nonempty(frame[key])) {
-          diagnostics.push(REJECTION('UNSUPPORTED_ROLE_VALUE',
+          diagnostics.push(REFUSAL('UNSUPPORTED_ROLE_VALUE',
             'role ' + i + ':' + frameIndex + ':' + key + ' is not a nonempty token name'));
           bindings[key] = null;
           unresolved = true;
@@ -148,7 +148,7 @@ export function receiveEnglishReading({ sourceText, sourceRevision = null, engli
         const matches = byText.get(frame[key]) ?? [];
         const unique = matches.length === 1 && matches[0].sourceSpan !== null;
         if (!unique) {
-          diagnostics.push(REJECTION('UNRESOLVED_ROLE_REFERENT',
+          diagnostics.push(REFUSAL('UNRESOLVED_ROLE_REFERENT',
             'role ' + i + ':' + frameIndex + ':' + key + ' cannot identify one token occurrence'));
         }
         bindings[key] = unique
@@ -163,7 +163,7 @@ export function receiveEnglishReading({ sourceText, sourceRevision = null, engli
       cohomology: structuredClone(sentence.cohomology ?? null) });
   }
   recordUncovered(searchAfter, sourceText.length);
-  if (sentences.length === 0) diagnostics.push(REJECTION('NO_SENTENCES', 'English parser supplied no sentence readings'));
+  if (sentences.length === 0) diagnostics.push(REFUSAL('NO_SENTENCES', 'English parser supplied no sentence readings'));
   return {
     kind: 'ptgae.english-reading-gate.v0',
     status: diagnostics.length ? 'abstained' : 'candidate',
