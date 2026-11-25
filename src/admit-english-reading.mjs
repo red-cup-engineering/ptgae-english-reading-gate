@@ -1,5 +1,4 @@
 import { sha256Hex } from "@red-cup-engineering/semiotic-content-address-system";
-import { createHash } from 'node:crypto';
 
 const PACKAGE = '@lenticule-science/english-language-algebra';
 const REFUSAL = (code, message) => Object.freeze({ code, message });

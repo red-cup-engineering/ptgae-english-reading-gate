@@ -1,5 +1,4 @@
 import { sha256Hex } from "@red-cup-engineering/semiotic-content-address-system";
-import { createHash } from 'node:crypto';
 import { consumeEnglishAlgebra } from './consume-english-algebra.mjs';
 import { isReading, isTruthTop } from '@red-cup-engineering/metrologic/four';
 
